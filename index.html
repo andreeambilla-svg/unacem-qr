@@ -414,6 +414,14 @@ let EQUIPO_ACTUAL = null;
 let PARTES_ACTUAL = [];
 let REPORTES_ACTUAL = [];
 let USUARIO_ACTUAL = '';
+let USUARIO_LOGIN = '';
+let PIN_ACTUAL = '';
+
+function escapeHtml(str) {
+  return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -542,14 +550,14 @@ function pintarComponentes() {
   cont.innerHTML = PARTES_ACTUAL.map((p, i) => `
     <div class="component-card${i===0 ? ' expanded' : ''}" style="margin-bottom:12px;">
       <div class="component-head" onclick="toggleComponente(this)">
-        <div class="left"><div class="emoji">🔧</div><h3>${p['NombreParte'] || 'Componente'}</h3></div>
+        <div class="left"><div class="emoji">🔧</div><h3>${escapeHtml(p['NombreParte'] || 'Componente')}</h3></div>
         <span style="color:${i===0 ? '#b71c1c' : '#999'}; font-weight:${i===0 ? '700' : '400'};">▼</span>
       </div>
       <div class="component-body" style="display:${i===0 ? 'grid' : 'none'};">
-        <div class="info-box"><label>Código Repuesto</label><value>${p['CodigoRepuesto'] || '-'}</value></div>
-        <div class="info-box"><label>Marca</label><value>${p['Marca'] || '-'}</value></div>
-        <div class="info-box"><label>Modelo</label><value>${p['Modelo'] || '-'}</value></div>
-        <div class="info-box"><label>Estado</label><value>${p['Estado'] || '-'}</value></div>
+        <div class="info-box"><label>Código Repuesto</label><value>${escapeHtml(p['CodigoRepuesto'] || '-')}</value></div>
+        <div class="info-box"><label>Marca</label><value>${escapeHtml(p['Marca'] || '-')}</value></div>
+        <div class="info-box"><label>Modelo</label><value>${escapeHtml(p['Modelo'] || '-')}</value></div>
+        <div class="info-box"><label>Estado</label><value>${escapeHtml(p['Estado'] || '-')}</value></div>
       </div>
     </div>
   `).join('');
@@ -578,10 +586,10 @@ function pintarHistorial() {
     return `
     <div class="timeline-card ${cardCls}" style="margin-bottom:12px;">
       <div class="timeline-row">
-        <div><h3>${r['TipoFalla'] || 'Reporte'}</h3><p class="date">${formatFechaHora(r['HORA'])}</p></div>
+        <div><h3>${escapeHtml(r['TipoFalla'] || 'Reporte')}</h3><p class="date">${formatFechaHora(r['HORA'])}</p></div>
         <span class="badge ${info.cls}" style="padding:6px 10px;">${info.icon} ${info.label}</span>
       </div>
-      <p class="desc">${r['Descripcion'] || ''}${r['Tecnico'] ? ' — ' + r['Tecnico'] : ''}</p>
+      <p class="desc">${escapeHtml(r['Descripcion'] || '')}${r['Tecnico'] ? ' — ' + escapeHtml(r['Tecnico']) : ''}</p>
     </div>`;
   }).join('');
 }
@@ -589,7 +597,7 @@ function pintarHistorial() {
 function pintarSelectParteAfectada() {
   const sel = document.getElementById('selParteAfectada');
   if (!sel || !PARTES_ACTUAL.length) return;
-  sel.innerHTML = PARTES_ACTUAL.map(p => `<option>${p['NombreParte']}</option>`).join('');
+  sel.innerHTML = PARTES_ACTUAL.map(p => `<option>${escapeHtml(p['NombreParte'])}</option>`).join('');
 }
 
 async function verificar() {
@@ -602,13 +610,19 @@ async function verificar() {
   }
 
   try {
-    const resp = await fetch(`${CONFIG.APPS_SCRIPT_URL}?action=verificarUsuario&usuario=${encodeURIComponent(usuario)}&pin=${encodeURIComponent(pin)}`);
+    const resp = await fetch(CONFIG.APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS en Apps Script
+      body: JSON.stringify({ action: 'verificarUsuario', usuario, pin })
+    });
     const data = await resp.json();
     if (!data.ok) {
       alert(data.error || 'Usuario o PIN incorrecto');
       return;
     }
     USUARIO_ACTUAL = data.nombre || usuario;
+    USUARIO_LOGIN = usuario;
+    PIN_ACTUAL = pin;
     showScreen('reportar');
   } catch (err) {
     alert('No se pudo verificar. Revisa tu conexión.');
@@ -644,6 +658,8 @@ async function enviarReporte() {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS en Apps Script
       body: JSON.stringify({
         action: 'reportarFalla',
+        usuario: USUARIO_LOGIN,
+        pin: PIN_ACTUAL,
         ubicacionTecnica: (EQUIPO_ACTUAL && EQUIPO_ACTUAL['UBICACION TECNICA']) || getCodigoQR(),
         equipo: (EQUIPO_ACTUAL && EQUIPO_ACTUAL['Nombre']) || '',
         tecnico: USUARIO_ACTUAL || document.getElementById('usuario').value.trim(),
@@ -661,6 +677,10 @@ async function enviarReporte() {
       cargarEquipo();
     } else {
       alert(data.error || 'No se pudo enviar el reporte');
+      if (String(data.error || '').indexOf('No autorizado') === 0) {
+        PIN_ACTUAL = '';
+        showScreen('verificacion');
+      }
     }
   } catch (err) {
     alert('No se pudo enviar. Revisa tu conexión.');
