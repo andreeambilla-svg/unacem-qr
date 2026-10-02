@@ -32,7 +32,8 @@ header .logo-badge img { height: 20px; width: auto; display: block; }
 header .text { position: relative; z-index: 1; }
 header .text p { margin: 0; font-size: 9px; font-weight: 800; opacity: 0.85; text-transform: uppercase; letter-spacing: 1.2px; }
 header .text h1 { margin: 3px 0 0 0; font-size: 16px; font-weight: 900; letter-spacing: -0.3px; }
-header .back { font-size: 9px; font-weight: 800; opacity: 0.85; text-transform: uppercase; letter-spacing: 1.2px; cursor: pointer; }
+header .back { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 800; opacity: 1; text-transform: uppercase; letter-spacing: 0.6px; cursor: pointer; background: rgba(255,255,255,0.18); padding: 8px 12px; border-radius: 999px; margin-bottom: 4px; min-height: 32px; box-sizing: border-box; }
+header .back:active { background: rgba(255,255,255,0.32); }
 
 .content { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; scrollbar-width: none; padding: 16px; display: flex; flex-direction: column; gap: 14px; position: relative; z-index: 1; min-width: 0; }
 .content::-webkit-scrollbar { display: none; }
@@ -287,8 +288,8 @@ label.field-label { font-size: 10px; font-weight: 800; color: #1a1a1a; text-tran
 <input type="text" id="usuario" placeholder="ej: operario01">
 </div>
 <div class="field">
-<label class="field-label">PIN (4 dígitos)</label>
-<input type="password" class="pin-input" id="pin" placeholder="••••" maxlength="4">
+<label class="field-label">PIN (6 dígitos)</label>
+<input type="password" class="pin-input" id="pin" placeholder="••••••" maxlength="6" inputmode="numeric" pattern="[0-9]*">
 </div>
 
 <button class="btn btn-red btn-full" onclick="verificar()" style="padding:14px; margin-bottom: 10px;">Verificar y continuar</button>
@@ -406,7 +407,7 @@ label.field-label { font-size: 10px; font-weight: 800; color: #1a1a1a; text-tran
 <script>
 /* ============ CONFIGURACIÓN — PEGAR AQUÍ LA URL DE TU APPS SCRIPT ============ */
 const CONFIG = {
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzHLHNbUzz6t1e3PTpkJPwHQjTbT2mqSIEB5XEjisjvox_tVW8pH8Ai9DgykYtxlfMf/exec', // La obtienes al publicar el Apps Script (ver instrucciones)
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwuT4kWs5KJFIUi3_Vsq1kfc4qntld8ARj2vLvZNgSWOcVavzA3PNpPL2zdVOvu5Aex/exec', // La obtienes al publicar el Apps Script (ver instrucciones)
   CODIGO_DEMO: 'C03-2150TF01' // Se usa si el enlace no trae ?codigo=... (modo pruebas, sin escanear QR)
 };
 
@@ -423,11 +424,22 @@ function escapeHtml(str) {
   }[c]));
 }
 
-function showScreen(id) {
+function showScreen(id, opts) {
+  opts = opts || {};
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.getElementById(id).querySelector('.content')?.scrollTo(0, 0);
+  if (!opts.fromPopstate) {
+    history.pushState({ screen: id }, '', '#' + id);
+  }
 }
+
+window.addEventListener('popstate', (e) => {
+  const id = (e.state && e.state.screen) || 'datos';
+  if (document.getElementById(id)) {
+    showScreen(id, { fromPopstate: true });
+  }
+});
 
 function getCodigoQR() {
   const params = new URLSearchParams(window.location.search);
@@ -604,8 +616,12 @@ async function verificar() {
   const usuario = document.getElementById('usuario').value.trim();
   const pin = document.getElementById('pin').value.trim();
 
-  if (!usuario || !pin || pin.length < 4) {
+  if (!usuario || !pin) {
     alert('Por favor completa usuario y PIN');
+    return;
+  }
+  if (pin.length < 6) {
+    alert('El PIN debe tener al menos 6 dígitos');
     return;
   }
 
@@ -667,7 +683,8 @@ async function enviarReporte() {
         prioridad: criticidadBtn.dataset.value,
         descripcion: descripcion,
         foto1: fotoSrc1,
-        foto2: fotoSrc2
+        foto2: fotoSrc2,
+        horaCliente: new Date().toISOString()
       })
     });
     const data = await resp.json();
@@ -690,7 +707,10 @@ async function enviarReporte() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', cargarEquipo);
+document.addEventListener('DOMContentLoaded', () => {
+  history.replaceState({ screen: 'datos' }, '', '#datos');
+  cargarEquipo();
+});
 
 function handlePhotoChange(event, idx) {
   const file = event.target.files && event.target.files[0];
