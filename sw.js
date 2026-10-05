@@ -4,8 +4,8 @@
  * No cachea nada de la API (Apps Script) — esos datos siempre van a la red;
  * el propio index.html maneja su caché de datos con un TTL corto. */
 
-const CACHE_NAME = 'unacem-qr-v1';
-const SHELL_URLS = ['./', './index.html'];
+const CACHE_NAME = 'unacem-qr-v2';
+const SHELL_URLS = ['./', './index.html', './manifest.json', './icon-192.png'];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
