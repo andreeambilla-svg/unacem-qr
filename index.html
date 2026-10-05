@@ -69,6 +69,12 @@ header .back:active { background: rgba(255,255,255,0.32); }
 .crit-media.selected { background: linear-gradient(135deg, #f39c12 0%, #d4870a 100%); box-shadow: 0 8px 16px rgba(243,156,18,0.35); }
 .crit-alta.selected { background: linear-gradient(135deg, #b71c1c 0%, #8b0000 100%); box-shadow: 0 8px 16px rgba(183,28,28,0.35); }
 .crit-critico.selected { background: linear-gradient(135deg, #660000 0%, #8b0000 100%); box-shadow: 0 8px 18px rgba(102,0,0,0.45); }
+
+.grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.gp-btn { padding: 12px 2px; border-radius: 10px; font-size: 13px; font-weight: 800; text-transform: uppercase; cursor: pointer; transition: all 0.15s ease; border: 2px solid #1a3a6e; background: white; color: #1a3a6e; letter-spacing: 0.3px; font-family: 'Inter', sans-serif; text-align: center; }
+.gp-btn:active { transform: scale(0.95); }
+.gp-btn.selected { background: linear-gradient(135deg, #1a3a6e 0%, #15305c 100%); color: white; border-color: transparent; box-shadow: 0 8px 16px rgba(26,58,110,0.35); transform: scale(0.97); }
+
 .btn-full { width: 100%; }
 .btn:active { transform: scale(0.97); }
 .btn-row { display: flex; gap: 10px; }
@@ -363,6 +369,17 @@ label.field-label { font-size: 10px; font-weight: 800; color: #1a1a1a; text-tran
 <button type="button" class="crit-btn crit-media" data-value="MEDIA" onclick="selectCriticidad(this)"><span class="crit-check"></span>Media</button>
 <button type="button" class="crit-btn crit-alta" data-value="ALTA" onclick="selectCriticidad(this)"><span class="crit-check"></span>Alta</button>
 <button type="button" class="crit-btn crit-critico" data-value="CRITICO" onclick="selectCriticidad(this)"><span class="crit-check"></span>Crítico</button>
+</div>
+</div>
+
+<div>
+<label class="field-label">GP (Grupo de Planificación)</label>
+<div class="grid-5" id="gpGroup">
+<button type="button" class="gp-btn" data-value="DM" onclick="selectGP(this)">DM</button>
+<button type="button" class="gp-btn" data-value="DE" onclick="selectGP(this)">DE</button>
+<button type="button" class="gp-btn" data-value="DI" onclick="selectGP(this)">DI</button>
+<button type="button" class="gp-btn" data-value="DR" onclick="selectGP(this)">DR</button>
+<button type="button" class="gp-btn" data-value="DP" onclick="selectGP(this)">DP</button>
 </div>
 </div>
 
@@ -777,6 +794,7 @@ async function enviarReporte() {
     tipoFalla = otro;
   }
   const criticidadBtn = document.querySelector('#criticidadGroup .crit-btn.selected');
+  const gpBtn = document.querySelector('#gpGroup .gp-btn.selected');
   const descripcion = document.getElementById('txtDescripcion').value.trim();
   const fotoImg1 = document.getElementById('photoPreviewImg1');
   const fotoImg2 = document.getElementById('photoPreviewImg2');
@@ -784,6 +802,7 @@ async function enviarReporte() {
   const fotoSrc2 = fotoImg2 && fotoImg2.src.startsWith('data:') ? fotoImg2.src : '';
 
   if (!criticidadBtn) { alert('Selecciona el nivel de criticidad'); return; }
+  if (!gpBtn) { alert('Selecciona el GP (grupo de planificación)'); return; }
   if (!descripcion) { alert('Describe la falla'); return; }
 
   const btn = document.getElementById('btnEnviar');
@@ -803,6 +822,7 @@ async function enviarReporte() {
         tecnico: USUARIO_ACTUAL || document.getElementById('usuario').value.trim(),
         tipoFalla: parte + ' - ' + tipoFalla,
         prioridad: criticidadBtn.dataset.value,
+        gp: gpBtn.dataset.value,
         descripcion: descripcion,
         foto1: fotoSrc1,
         foto2: fotoSrc2,
@@ -920,6 +940,11 @@ function removePhoto(event, idx) {
 
 function selectCriticidad(btn) {
   document.querySelectorAll('#criticidadGroup .crit-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function selectGP(btn) {
+  document.querySelectorAll('#gpGroup .gp-btn').forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
 }
 
