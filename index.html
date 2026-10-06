@@ -794,7 +794,10 @@ async function verificar() {
   }
 }
 
+let ENVIANDO_REPORTE = false; // candado extra: evita doble envío aunque el botón no alcance a deshabilitarse a tiempo
+
 async function enviarReporte() {
+  if (ENVIANDO_REPORTE) return; // ya hay un envío en curso, ignora el toque/clic repetido
   const parte = document.getElementById('selParteAfectada').value;
   const selFalla = document.getElementById('selTipoFalla');
   let tipoFalla = selFalla.value;
@@ -818,6 +821,7 @@ async function enviarReporte() {
   const btn = document.getElementById('btnEnviar');
   const btnHtmlOriginal = btn.innerHTML;
   const tieneFotos = !!(fotoSrc1 || fotoSrc2);
+  ENVIANDO_REPORTE = true;
   btn.disabled = true;
   btn.innerHTML = '<span class="spin" style="display:inline-block;">⏳</span> ' + (tieneFotos ? 'Subiendo fotos...' : 'Enviando...');
 
@@ -856,6 +860,7 @@ async function enviarReporte() {
   } catch (err) {
     alert('No se pudo confirmar el envío (el servidor tardó mucho, por ejemplo subiendo las fotos). ANTES de volver a intentar, revisa el listado de reportes o el Google Sheets: es posible que ya se haya guardado aunque la app no llegó a confirmarlo. Si no aparece, vuelve a intentarlo.');
   } finally {
+    ENVIANDO_REPORTE = false;
     btn.disabled = false;
     btn.innerHTML = btnHtmlOriginal;
   }
