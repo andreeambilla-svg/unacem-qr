@@ -445,7 +445,8 @@ const CONFIG = {
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwuT4kWs5KJFIUi3_Vsq1kfc4qntld8ARj2vLvZNgSWOcVavzA3PNpPL2zdVOvu5Aex/exec', // La obtienes al publicar el Apps Script (ver instrucciones)
   CODIGO_DEMO: 'C03-2150TF01', // Se usa si el enlace no trae ?codigo=... (modo pruebas, sin escanear QR)
   CACHE_TTL_MS: 5 * 60 * 1000,   // cuánto tiempo se reutilizan los datos guardados en el celular antes de pedirlos de nuevo
-  FETCH_TIMEOUT_MS: 12000,        // si el servidor no responde en este tiempo, se considera caída la conexión (llamadas rápidas: login, cargar equipo)
+  FETCH_TIMEOUT_MS: 12000,        // si el servidor no responde en este tiempo, se considera caída la conexión (cargar datos del equipo)
+  FETCH_TIMEOUT_LOGIN_MS: 20000,  // tiempo de espera al INGRESAR (usuario+PIN) — Apps Script a veces tarda en "despertar"
   FETCH_TIMEOUT_ENVIO_MS: 45000,  // tiempo de espera al ENVIAR un reporte (con fotos puede tardar más en subir a Drive)
   FETCH_REINTENTOS: 2              // intentos adicionales automáticos antes de mostrar error (NO aplica al envío de reportes, ver enviarReporte)
 };
@@ -755,7 +756,10 @@ function pintarSelectParteAfectada() {
   sel.innerHTML = PARTES_ACTUAL.map(p => `<option>${escapeHtml(p['NombreParte'])}</option>`).join('');
 }
 
+let ENVIANDO_LOGIN = false; // candado extra: evita doble ingreso si se presiona varias veces
+
 async function verificar() {
+  if (ENVIANDO_LOGIN) return; // ya hay una verificación en curso, ignora el toque/clic repetido
   const usuario = document.getElementById('usuario').value.trim();
   const pin = document.getElementById('pin').value.trim();
 
@@ -770,6 +774,7 @@ async function verificar() {
 
   const btnVerificar = document.querySelector('#verificacion .btn-red');
   const txtOriginalBtn = btnVerificar ? btnVerificar.textContent : '';
+  ENVIANDO_LOGIN = true;
   if (btnVerificar) btnVerificar.disabled = true;
 
   try {
@@ -777,7 +782,7 @@ async function verificar() {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS en Apps Script
       body: JSON.stringify({ action: 'verificarUsuario', usuario, pin })
-    }, () => { if (btnVerificar) btnVerificar.textContent = 'Reintentando...'; });
+    }, () => { if (btnVerificar) btnVerificar.textContent = 'Reintentando...'; }, CONFIG.FETCH_TIMEOUT_LOGIN_MS, 1);
     const data = await resp.json();
     if (!data.ok) {
       alert(data.error || 'Usuario o PIN incorrecto');
@@ -790,6 +795,7 @@ async function verificar() {
   } catch (err) {
     alert('No se pudo verificar. Revisa tu conexión e intenta de nuevo.');
   } finally {
+    ENVIANDO_LOGIN = false;
     if (btnVerificar) { btnVerificar.disabled = false; btnVerificar.textContent = txtOriginalBtn; }
   }
 }
