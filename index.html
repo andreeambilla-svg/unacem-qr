@@ -324,6 +324,30 @@ label.field-label { font-size: 10px; font-weight: 800; color: #1a1a1a; text-tran
 </div>
 </div>
 
+<!-- PANTALLA 5b: CREAR PIN PERSONAL (primer ingreso o PIN restablecido) -->
+<div id="nuevoPin" class="screen">
+<div class="deco-tl"></div>
+<div class="deco-bl"></div>
+<div class="auth-wrap">
+<div class="auth-card">
+<div class="auth-icon-wrap">🔑</div>
+<h2>Crea tu PIN personal</h2>
+<p>Es tu primer ingreso (o tu PIN fue restablecido). Elige un PIN de 6 dígitos que solo tú conozcas.</p>
+<div class="field">
+<label class="field-label">Nuevo PIN (6 dígitos)</label>
+<input type="password" class="pin-input" id="pinNuevo1" placeholder="••••••" maxlength="6" inputmode="numeric" pattern="[0-9]*">
+</div>
+<div class="field">
+<label class="field-label">Repite el nuevo PIN</label>
+<input type="password" class="pin-input" id="pinNuevo2" placeholder="••••••" maxlength="6" inputmode="numeric" pattern="[0-9]*">
+</div>
+<button class="btn btn-red btn-full" id="btnGuardarPin" onclick="guardarNuevoPin()" style="padding:14px; margin-bottom: 10px;">Guardar mi PIN y continuar</button>
+<button class="btn btn-outline btn-full" onclick="cancelarNuevoPin()" style="padding:14px;">Cancelar</button>
+<div class="info-box-auth">🛡️ Tu PIN se guarda cifrado. Nadie, ni el administrador, puede verlo.</div>
+</div>
+</div>
+</div>
+
 <!-- PANTALLA 6: REPORTAR FALLA -->
 <div id="reportar" class="screen">
 <header>
@@ -791,12 +815,64 @@ async function verificar() {
     USUARIO_ACTUAL = data.nombre || usuario;
     USUARIO_LOGIN = usuario;
     PIN_ACTUAL = pin;
+    if (data.debeCambiar) {
+      PIN_TEMPORAL = pin;
+      PIN_ACTUAL = '';
+      document.getElementById('pinNuevo1').value = '';
+      document.getElementById('pinNuevo2').value = '';
+      showScreen('nuevoPin');
+      return;
+    }
     showScreen('reportar');
   } catch (err) {
     alert('No se pudo verificar. Revisa tu conexión e intenta de nuevo.');
   } finally {
     ENVIANDO_LOGIN = false;
     if (btnVerificar) { btnVerificar.disabled = false; btnVerificar.textContent = txtOriginalBtn; }
+  }
+}
+
+let PIN_TEMPORAL = '';
+let GUARDANDO_PIN = false;
+
+function cancelarNuevoPin() {
+  PIN_TEMPORAL = '';
+  USUARIO_LOGIN = '';
+  document.getElementById('pin').value = '';
+  showScreen('datos');
+}
+
+async function guardarNuevoPin() {
+  if (GUARDANDO_PIN) return;
+  const p1 = document.getElementById('pinNuevo1').value.trim();
+  const p2 = document.getElementById('pinNuevo2').value.trim();
+  if (!/^[0-9]{6}$/.test(p1)) { alert('El PIN debe tener exactamente 6 dígitos (solo números)'); return; }
+  if (p1 !== p2) { alert('Los dos PIN no coinciden'); return; }
+  if (p1 === PIN_TEMPORAL) { alert('Elige un PIN distinto al inicial'); return; }
+  if (/^(\d)\1+$/.test(p1) || '0123456789'.indexOf(p1) >= 0 || '9876543210'.indexOf(p1) >= 0) {
+    alert('Ese PIN es muy fácil de adivinar (repetido o consecutivo). Elige otro.');
+    return;
+  }
+  const btn = document.getElementById('btnGuardarPin');
+  const txt = btn.textContent;
+  GUARDANDO_PIN = true; btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    const resp = await fetchConReintento(CONFIG.APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'cambiarPin', usuario: USUARIO_LOGIN, pin: PIN_TEMPORAL, pinNuevo: p1 })
+    }, null, CONFIG.FETCH_TIMEOUT_LOGIN_MS, 0);
+    const data = await resp.json();
+    if (!data.ok) { alert(data.error || 'No se pudo guardar el PIN'); return; }
+    PIN_ACTUAL = p1;
+    PIN_TEMPORAL = '';
+    document.getElementById('pin').value = '';
+    alert('PIN creado. La próxima vez ingresa con tu nuevo PIN.');
+    showScreen('reportar');
+  } catch (err) {
+    alert('No se pudo guardar. Revisa tu conexión e intenta de nuevo.');
+  } finally {
+    GUARDANDO_PIN = false; btn.disabled = false; btn.textContent = txt;
   }
 }
 
