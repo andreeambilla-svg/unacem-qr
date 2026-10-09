@@ -443,7 +443,7 @@ label.field-label { font-size: 10px; font-weight: 800; color: #1a1a1a; text-tran
 /* ============ CONFIGURACIÓN — PEGAR AQUÍ LA URL DE TU APPS SCRIPT ============ */
 const CONFIG = {
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwuT4kWs5KJFIUi3_Vsq1kfc4qntld8ARj2vLvZNgSWOcVavzA3PNpPL2zdVOvu5Aex/exec', // La obtienes al publicar el Apps Script (ver instrucciones)
-  CODIGO_DEMO: 'C03-2150TF01', // Se usa si el enlace no trae ?codigo=... (modo pruebas, sin escanear QR)
+  CODIGO_DEMO: '', // Sin codigo en el enlace no se muestra ningun equipo
   CACHE_TTL_MS: 5 * 60 * 1000,   // cuánto tiempo se reutilizan los datos guardados en el celular antes de pedirlos de nuevo
   FETCH_TIMEOUT_MS: 12000,        // si el servidor no responde en este tiempo, se considera caída la conexión (cargar datos del equipo)
   FETCH_TIMEOUT_LOGIN_MS: 20000,  // tiempo de espera al INGRESAR (usuario+PIN) — Apps Script a veces tarda en "despertar"
@@ -548,7 +548,7 @@ function aplicarDatos(data) {
 }
 
 async function cargarEquipo() {
-  const codigo = getCodigoQR();
+  const codigo = getCodigoQR(); if (!codigo) { mostrarErrorCarga('Escanea el código QR pegado en el equipo para ver su ficha.'); return; }
   if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.indexOf('PEGAR_AQUI') === 0) {
     mostrarErrorCarga('Falta configurar la URL del Apps Script en CONFIG.APPS_SCRIPT_URL.');
     return;
